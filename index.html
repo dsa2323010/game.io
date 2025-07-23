@@ -1,320 +1,2274 @@
-
-&lt;!DOCTYPE html&gt;
-&lt;html lang=&quot;ja&quot;&gt;
-&lt;head&gt;
-    &lt;meta charset=&quot;UTF-8&quot;&gt;
-    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
-    &lt;title&gt;ゲーム設定インタラクティブダッシュボード&lt;/title&gt;
-    &lt;!-- Chosen Palette: Calm Neutrals with Blue Accent --&gt;
-    &lt;!-- Application Structure Plan: アプリケーションは、ヘッダー、主要な設定カテゴリ（プレイヤー、スキル、ステージ情報）を選択するためのタブナビゲーション、そして選択されたタブの内容を表示する動的なコンテンツエリアで構成されます。このタブベースの構造は、ユーザーが異なる設定カテゴリ間を直感的に移動し、情報を体系的に探索できるようにするために選択されました。各セクションはカードベースのレイアウトを使用し、情報を視覚的に整理して提供します。 --&gt;
-    &lt;!-- Visualization &amp; Content Choices: プレイヤー設定はアイコン付きのリストで表示し、一目で理解できるようにします。スキル設定は、ステージごとに分類されたインタラクティブなカードで表示し、詳細な説明を提供します。ステージと敵の設定は、各ステージの概要を示すカードと、Chart.jsを使用した棒グラフを組み合わせて視覚的に比較できるようにします。これにより、ステージ間の難易度の上昇を直感的に把握できます。これらの選択は、静的な情報を対話的で理解しやすい形式に変換することを目的としています。 --&gt;
-    &lt;!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. --&gt;
-    &lt;script src=&quot;https://cdn.tailwindcss.com&quot;&gt;&lt;/script&gt;
-    &lt;script src=&quot;https://cdn.jsdelivr.net/npm/chart.js&quot;&gt;&lt;/script&gt;
-    &lt;style&gt;
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ローグライクアクションゲーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js library -->
+    <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
         body {
-            font-family: &#39;Inter&#39;, &#39;Noto Sans JP&#39;, sans-serif;
-            background-color: #f8f9fa;
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
         }
-        .tab-button {
-            transition: all 0.3s ease;
-            border-bottom: 2px solid transparent;
+        .game-container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 95vw; /* Responsive width */
+            max-width: 1500px; /* Increased max width for wider canvas */
+            box-sizing: border-box;
         }
-        .tab-button.active {
-            border-bottom-color: #3b82f6;
-            color: #3b82f6;
-            font-weight: 600;
-        }
-        .content-section {
-            display: none;
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        .content-section.active {
+        canvas {
+            background-color: #e0f2f7; /* Default background for canvas */
             display: block;
+            border-radius: 10px;
+            border: 2px solid #ccc;
+            width: 100%; /* Make canvas responsive */
+            height: 600px; /* Fixed height for game area */
+            max-height: 70vh; /* Max height relative to viewport */
         }
+        .game-ui {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+        }
+        .health-bar-container {
+            width: 150px;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #aaa;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .health-bar {
+            height: 100%;
+            background-color: #ff4d4d;
+            width: 100%; /* Initial width */
+            border-radius: 10px;
+            transition: width 0.3s ease-out;
+        }
+        .game-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .game-button {
+            padding: 12px 25px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(145deg, #6dd5ed, #2193b0); /* Blue gradient */
+            color: white;
+        }
+        .game-button:hover {
+            background: linear-gradient(145deg, #2193b0, #6dd5ed);
+            transform: translateY(-2px);
+        }
+        .game-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .game-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 300%;
+            height: 300%;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            transition: all 0.75s ease-out;
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+        }
+        .game-button:hover::before {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            animation: fadeInModal 0.3s ease-out;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            width: 80%;
+            max-width: 500px;
+            text-align: center;
+            position: relative;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .modal-content h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 2.2em;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .modal-content p {
+            font-size: 1.2em;
+            color: #555;
+            margin-bottom: 25px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap; /* Allow buttons to wrap */
+        }
+        .modal-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(145deg, #007bff, #0056b3); /* Blue gradient */
+            color: white;
+        }
+        .modal-button:hover {
+            background: linear-gradient(145deg, #0056b3, #007bff);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+        .modal-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Skill selection specific styles */
+        .skill-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .skill-item {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            border: 2px solid transparent;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .skill-item:hover {
+            background-color: #dee2e6;
+            transform: translateY(-2px);
+            border-color: #007bff;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .skill-item.selected {
+            background-color: #d1e7dd;
+            border-color: #28a745;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.5);
+            transform: translateY(-1px);
+        }
+        .skill-item h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 1.3em;
+            margin-bottom: 5px;
+        }
+        .skill-item p {
+            font-size: 0.9em;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        /* Hint display area */
+        #hintDisplay, #gameOverSummaryDisplay, #gameClearSummaryDisplay {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e2e6ea;
+            color: #343a40;
+            font-size: 1em;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        #hintDisplay.loading::before, #gameOverSummaryDisplay.loading::before, #gameClearSummaryDisplay.loading::before {
+            content: '分析中...';
+            color: #6c757d;
+        }
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .stat-card {
-            background-color: white;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        @keyframes fadeInModal {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        @keyframes pulseBeam {
+            0% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.5; }
         }
-        .skill-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+        @keyframes auraPulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.05); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 0.5; }
         }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 400px;
-            max-height: 50vh;
+        .beam-active {
+            animation: pulseBeam 0.5s infinite alternate;
         }
-    &lt;/style&gt;
-&lt;/head&gt;
-&lt;body class=&quot;text-gray-800&quot;&gt;
+        .aura-active {
+            animation: auraPulse 1s infinite alternate;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="game-container">
+        <h1 class="text-4xl font-bold text-gray-800 mb-6">ローグライクアクションゲーム</h1>
 
-```
-
-<div class="container mx-auto p-4 md:p-8 max-w-7xl">
-
-```
-<!-- Header -->
-<header class="text-center mb-8">
-    <h1 class="text-4xl md:text-5xl font-bold text-gray-900">ゲーム設定ダッシュボード</h1>
-    <p class="text-lg text-gray-600 mt-2">ローグライクアクションゲームの主要な設定とパラメータ</p>
-</header>
-
-<!-- Tab Navigation -->
-<nav class="flex justify-center border-b border-gray-200 mb-8">
-    <button class="tab-button active py-4 px-6 text-lg" data-tab="player">プレイヤー設定</button>
-    <button class="tab-button py-4 px-6 text-lg" data-tab="skills">スキル一覧</button>
-    <button class="tab-button py-4 px-6 text-lg" data-tab="stages">ステージ & 敵情報</button>
-</nav>
-
-<!-- Content Area -->
-<main id="content-area">
-
-    <!-- Player Section -->
-    <section id="player" class="content-section active">
-        <h2 class="text-3xl font-bold text-center mb-6">プレイヤープロパティ</h2>
-        <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">このセクションでは、プレイヤーキャラクターの基本的な能力、戦闘関連のステータス、そして成長に関する要素を確認できます。これらの数値がゲームの難易度とプレイフィールにどう影響するかを把握しましょう。</p>
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Base Stats -->
-            <div class="stat-card">
-                <h3 class="text-xl font-semibold mb-3 text-blue-600">基本ステータス</h3>
-                <ul class="space-y-2 text-gray-700">
-                    <li class="flex items-center"><span class="w-6 mr-2">❤️</span><strong>初期体力:</strong><span class="ml-auto font-mono">3 ゲージ</span></li>
-                    <li class="flex items-center"><span class="w-6 mr-2">🏃</span><strong>移動速度:</strong><span class="ml-auto font-mono">5 (基本値)</span></li>
-                    <li class="flex items-center"><span class="w-6 mr-2">⏫</span><strong>ジャンプ力:</strong><span class="ml-auto font-mono">15</span></li>
-                    <li class="flex items-center"><span class="w-6 mr-2">🌍</span><strong>重力:</strong><span class="ml-auto font-mono">0.8</span></li>
-                </ul>
-            </div>
-            <!-- Combat Stats -->
-            <div class="stat-card">
-                <h3 class="text-xl font-semibold mb-3 text-blue-600">戦闘ステータス</h3>
-                <ul class="space-y-2 text-gray-700">
-                    <li class="flex items-center"><span class="w-6 mr-2">💥</span><strong>弾クールダウン:</strong><span class="ml-auto font-mono">200 ms</span></li>
-                    <li class="flex items-center"><span class="w-6 mr-2">🛡️</span><strong>ダメージ後無敵:</strong><span class="ml-auto font-mono">2 秒</span></li>
-                    <li class="flex items-center"><span class="w-6 mr-2">✨</span><strong>レベルアップ後無敵:</strong><span class="ml-auto font-mono">2 秒</span></li>
-                    <li class="flex items-center"><span class="w-6 mr-2">💪</span><strong>バリア持続時間:</strong><span class="ml-auto font-mono">1 秒</span></li>
-                </ul>
-            </div>
-            <!-- Progression -->
-            <div class="stat-card">
-                <h3 class="text-xl font-semibold mb-3 text-blue-600">成長要素</h3>
-                <ul class="space-y-2 text-gray-700">
-                     <li class="flex items-center"><span class="w-6 mr-2">📈</span><strong>レベルアップ条件:</strong><span class="ml-auto font-mono">敵 5 体</span></li>
-                     <li class="flex items-center"><span class="w-6 mr-2">🎯</span><strong>倒した敵カウント:</strong><span class="ml-auto font-mono">レベル毎リセット</span></li>
-                </ul>
-            </div>
-        </div>
-    </section>
-
-    <!-- Skills Section -->
-    <section id="skills" class="content-section">
-         <h2 class="text-3xl font-bold text-center mb-6">プレイヤースキル</h2>
-         <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">プレイヤーはレベルアップ時にのみ、以下のスキルからランダムで提示された2つのうち1つを選択できます。ステージによって選択可能なスキルプールが異なります。</p>
-         <div class="grid lg:grid-cols-2 gap-8">
-            <!-- Stage 1 Skills -->
-            <div>
-                <h3 class="text-2xl font-semibold mb-4 text-center text-green-700">ステージ1で選択可能</h3>
-                <div id="stage1-skills" class="space-y-4">
-                    <!-- Skills will be injected by JS -->
+        <div class="game-ui">
+            <div class="flex items-center gap-2">
+                <span>体力:</span>
+                <div class="health-bar-container">
+                    <div id="playerHealthBar" class="health-bar"></div>
                 </div>
+                <span id="playerHealthText">3/3</span>
             </div>
-            <!-- Stage 2 Skills -->
-            <div>
-                <h3 class="text-2xl font-semibold mb-4 text-center text-purple-700">ステージ2で選択可能</h3>
-                <div id="stage2-skills" class="space-y-4">
-                    <!-- Skills will be injected by JS -->
-                </div>
-            </div>
-         </div>
-    </section>
-
-    <!-- Stages Section -->
-    <section id="stages" class="content-section">
-        <h2 class="text-3xl font-bold text-center mb-6">ステージ & 敵情報</h2>
-        <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">ステージが進むにつれて敵は強化され、新たな脅威が登場します。各ステージの敵の数と体力を比較し、難易度の上昇を視覚的に確認しましょう。</p>
-        <div class="grid md:grid-cols-3 gap-6 mb-8 text-center">
-            <!-- Stage 1 Card -->
-            <div class="stat-card">
-                <h3 class="text-xl font-semibold text-green-700">ステージ 1</h3>
-                <p class="text-gray-600 mt-1">敵の数: 12体</p>
-                <p class="text-gray-600">体力: 3ゲージ</p>
-            </div>
-            <!-- Stage 2 Card -->
-            <div class="stat-card">
-                <h3 class="text-xl font-semibold text-purple-700">ステージ 2</h3>
-                <p class="text-gray-600 mt-1">敵の数: 15体</p>
-                <p class="text-gray-600">体力: 4ゲージ</p>
-            </div>
-            <!-- Stage 3 Card -->
-            <div class="stat-card">
-                <h3 class="text-xl font-semibold text-red-700">ステージ 3 (ボス)</h3>
-                <p class="text-gray-600 mt-1">敵の数: 2体</p>
-                <p class="text-gray-600">体力: 20ゲージ</p>
-            </div>
+            <div class="text-xl font-bold">ステージ: <span id="currentStage">1</span></div>
+            <div class="text-xl font-bold">レベル: <span id="playerLevel">1</span></div>
+            <div class="text-xl font-bold">倒した敵: <span id="enemiesDefeated">0</span></div>
         </div>
 
-        <div class="stat-card mt-8">
-             <h3 class="text-2xl font-semibold text-center mb-4">ステージ別 敵ステータス比較</h3>
-             <div class="chart-container">
-                <canvas id="stageChart"></canvas>
-             </div>
+        <canvas id="gameCanvas" width="1400" height="600"></canvas>
+
+        <div class="game-buttons">
+            <button id="startGameButton" class="game-button">ゲーム開始</button>
+            <button id="restartGameButton" class="game-button" style="display: none;">再挑戦</button>
         </div>
-    </section>
+    </div>
 
-</main>
-```
+    <!-- Pause Modal -->
+    <div id="pauseModal" class="modal">
+        <div class="modal-content">
+            <h2>ポーズ中</h2>
+            <p>ゲームは一時停止しています。</p>
+            <div class="modal-buttons">
+                <button id="resumeButton" class="modal-button">再開</button>
+                <button id="hintButton" class="modal-button">✨ 敵の弱点ヒント ✨</button>
+            </div>
+            <div id="hintDisplay" class="mt-4"></div>
+        </div>
+    </div>
 
-</div>
+    <!-- Game Over Modal -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2>ゲームオーバー</h2>
+            <p id="gameOverMessage">体力がなくなりました。</p>
+            <div id="gameOverSummaryDisplay" class="mt-4 text-sm text-gray-700"></div>
+            <div class="modal-buttons">
+                <button id="gameOverRestartButton" class="modal-button">再挑戦</button>
+            </div>
+        </div>
+    </div>
 
-<script>
-    const gameData = {
-        skills: {
-            stage1: [
-                { name: '体力アップ', description: '最大体力が1ゲージ増加する。', type: 'パッシブ' },
-                { name: '移動スピードアップ', description: 'プレイヤーの移動速度が少し上がる。', type: 'パッシブ' },
-                { name: '弾速アップ', description: 'プレイヤーの弾の速度と連射速度が少し上がる。', type: 'パッシブ' },
-                { name: 'バリア', description: '10秒に1回、敵の攻撃を1回無効化するバリアを生成する。', type: 'アクティブ' }
-            ],
-            stage2: [
-                { name: '弾2倍', description: '一度に2発の弾を発射する。', type: 'パッシブ' },
-                { name: 'オーラ', description: 'プレイヤーにオーラを付与し、触れた敵の体力を継続的に減らす。', type: 'パッシブ' },
-                { name: 'ホーミング弾', description: '発射した弾が敵を自動追尾する。', type: 'パッシブ' },
-                { name: '弾ダメージアップ', description: '弾の攻撃で敵の体力を2ゲージ減らせる。', type: 'パッシブ' },
-                { name: 'パンチ', description: 'Kキーでパンチを繰り出す。4秒に1回、敵の体力を2ゲージ減らせる。', type: 'アクティブ' }
-            ]
-        },
-        stages: [
-            { name: 'ステージ 1', enemyCount: 12, enemyHealth: 3 },
-            { name: 'ステージ 2', enemyCount: 15, enemyHealth: 4 },
-            { name: 'ステージ 3 (ボス)', enemyCount: 2, enemyHealth: 20 }
-        ]
-    };
+    <!-- Game Clear Modal -->
+    <div id="gameClearModal" class="modal">
+        <div class="modal-content">
+            <h2>ゲームクリア！</h2>
+            <p>ラスボスを倒しました！おめでとうございます！</p>
+            <div id="gameClearSummaryDisplay" class="mt-4 text-sm text-gray-700"></div>
+            <div class="modal-buttons">
+                <button id="gameClearRestartButton" class="modal-button">もう一度プレイ</button>
+            </div>
+        </div>
+    </div>
 
-    document.addEventListener('DOMContentLoaded', () => {
-        // Tab switching logic
-        const tabs = document.querySelectorAll('.tab-button');
-        const sections = document.querySelectorAll('.content-section');
+    <!-- Skill Selection Modal -->
+    <div id="skillSelectionModal" class="modal">
+        <div class="modal-content">
+            <h2>スキル選択</h2>
+            <p>新しいスキルを1つ選択してください。</p>
+            <div id="skillList" class="skill-list">
+                <!-- Skills will be dynamically loaded here -->
+            </div>
+            <div class="modal-buttons mt-5">
+                <button id="confirmSkillsButton" class="modal-button" disabled>スキルを確定</button>
+            </div>
+        </div>
+    </div>
 
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
+    <script>
+        // Canvas and Context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-                const target = tab.getAttribute('data-tab');
-                sections.forEach(section => {
-                    section.classList.remove('active');
-                    if (section.id === target) {
-                        section.classList.add('active');
-                    }
-                });
-            });
-        });
+        // UI Elements
+        const playerHealthBar = document.getElementById('playerHealthBar');
+        const playerHealthText = document.getElementById('playerHealthText');
+        const currentStageText = document.getElementById('currentStage');
+        const playerLevelText = document.getElementById('playerLevel');
+        const enemiesDefeatedText = document.getElementById('enemiesDefeated');
+        const startGameButton = document.getElementById('startGameButton');
+        const restartGameButton = document.getElementById('restartGameButton');
 
-        // Populate skills
-        const stage1SkillsContainer = document.getElementById('stage1-skills');
-        const stage2SkillsContainer = document.getElementById('stage2-skills');
+        // Modals
+        const pauseModal = document.getElementById('pauseModal');
+        const resumeButton = document.getElementById('resumeButton');
+        const hintButton = document.getElementById('hintButton'); // New: Hint Button
+        const hintDisplay = document.getElementById('hintDisplay'); // New: Hint Display Area
+        const gameOverModal = document.getElementById('gameOverModal');
+        const gameOverSummaryDisplay = document.getElementById('gameOverSummaryDisplay'); // New: Game Over Summary Display
+        const gameOverRestartButton = document.getElementById('gameOverRestartButton');
+        const gameClearModal = document.getElementById('gameClearModal');
+        const gameClearSummaryDisplay = document.getElementById('gameClearSummaryDisplay'); // New: Game Clear Summary Display
+        const gameClearRestartButton = document.getElementById('gameClearRestartButton');
+        const skillSelectionModal = document.getElementById('skillSelectionModal');
+        const skillListDiv = document.getElementById('skillList');
+        const confirmSkillsButton = document.getElementById('confirmSkillsButton');
 
-        const createSkillCard = (skill) => {
-            const typeColor = skill.type === 'パッシブ' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800';
-            return `
-                <div class="stat-card skill-card">
-                    <div class="flex justify-between items-center">
-                        <h4 class="text-lg font-semibold">${skill.name}</h4>
-                        <span class="text-xs font-semibold px-2 py-1 rounded-full ${typeColor}">${skill.type}</span>
-                    </div>
-                    <p class="text-gray-600 mt-2">${skill.description}</p>
-                </div>
-            `;
+        // Game State Variables
+        let gameRunning = false;
+        let paused = false;
+        let gameOver = false;
+        let gameClear = false;
+        let selectingSkills = false;
+        let lastFrameTime = 0;
+        let gameTime = 0; // New: Global game time for animations
+
+        // Player properties
+        const player = {
+            x: 50,
+            y: canvas.height - 80, // Ground level
+            width: 40,
+            height: 60,
+            color: '#4a90e2', // Student color
+            dx: 0,
+            dy: 0,
+            speed: 5,
+            jumpStrength: 16, // Decreased jump strength
+            gravity: 0.8,
+            onGround: false,
+            maxHealth: 3,
+            currentHealth: 3,
+            level: 1,
+            totalEnemiesDefeated: 0, // 総敵撃破数（UI表示用）
+            enemiesDefeatedSinceLastLevel: 0, // レベルアップ条件用
+            projectiles: [],
+            lastShotTime: 0,
+            shotCooldown: 200, // milliseconds
+            isCrouching: false,
+            direction: 'right', // Added player direction
+            isInvincible: false, // New: Invincibility state
+            invincibleTimer: 0, // New: Invincibility countdown timer
+            invincibleDuration: 2000, // New: Invincibility duration (2 seconds)
+            skills: {
+                healthUp: 0,
+                playerSpeedUp: 0,
+                bulletSpeedUp: 0,
+                doubleProjectile: false,
+                aura: false,
+                homingProjectile: false,
+                projectileDamageUp: false,
+                punch: { active: false, cooldown: 0, lastUsed: 0, frequency: 4000 }
+            },
+            selectedSkillsThisLevel: [],
+            shootingEffectTimer: 0 // Timer for shooting animation
         };
 
-        gameData.skills.stage1.forEach(skill => {
-            stage1SkillsContainer.innerHTML += createSkillCard(skill);
-        });
-        gameData.skills.stage2.forEach(skill => {
-            stage2SkillsContainer.innerHTML += createSkillCard(skill);
+        // Audio Synths (Tone.js)
+        let playerShootSynth;
+        let playerJumpSynth;
+        let enemyHitSynth;
+        let playerDamageSynth;
+        let gameOverSynth;
+        let gameClearSynth;
+        let skillAcquireSynth;
+
+        // Player skill application
+        function applyPlayerSkills() {
+            player.maxHealth = 3 + player.skills.healthUp;
+            player.speed = 5 + player.skills.playerSpeedUp * 0.5; // Each level up increases speed by 0.5
+            player.shotCooldown = 200 - player.skills.bulletSpeedUp * 20; // Each level up decreases cooldown by 20ms
+            if (player.shotCooldown < 50) player.shotCooldown = 50; // Minimum cooldown
+        }
+
+        // Enemy properties
+        let enemies = [];
+        let projectiles = []; // For enemy projectiles
+        let currentStage = 1;
+        let hitEffects = []; // To store hit animation effects
+        let slamEffects = []; // New: For boss slam ground effect
+        let summonEffects = []; // New: For minion summon effect
+
+        // Key states
+        const keys = {
+            a: false,
+            d: false,
+            space: false,
+            shift: false,
+            l: false,
+            k: false, // For punch skill
+            enter: false
+        };
+
+        // --- Game Objects Classes ---
+
+        class Entity {
+            constructor(x, y, width, height, health) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.maxHealth = health;
+                this.currentHealth = health;
+                this.dx = 0;
+                this.dy = 0;
+                this.alive = true;
+                this.id = Math.random().toString(36).substring(2, 9); // Unique ID for debugging
+                this.animationOffset = 0; // For bobbing/swaying animation
+                this.lastAuraDamageTime = 0; // New: For aura damage cooldown
+            }
+
+            drawHealthBar() {
+                if (this.currentHealth < this.maxHealth && this.currentHealth > 0) {
+                    const barWidth = this.width;
+                    const barHeight = 5;
+                    const healthRatio = this.currentHealth / this.maxHealth;
+                    ctx.fillStyle = '#ddd';
+                    ctx.fillRect(this.x, this.y - barHeight - 5, barWidth, barHeight);
+                    ctx.fillStyle = '#ff4d4d'; // Red health
+                    ctx.fillRect(this.x, this.y - barHeight - 5, barWidth * healthRatio, barHeight);
+                }
+            }
+
+            takeDamage(amount) {
+                console.log(`[DAMAGE] Entity ${this.type || 'Unknown'} (ID: ${this.id}) at (${this.x.toFixed(0)}, ${this.y.toFixed(0)}) took ${amount} damage. Health: ${this.currentHealth} -> ${this.currentHealth - amount}`);
+                this.currentHealth -= amount;
+                if (this.currentHealth <= 0) {
+                    this.currentHealth = 0;
+                    this.alive = false;
+                    console.log(`[DEATH] Entity ${this.type || 'Unknown'} (ID: ${this.id}) at (${this.x.toFixed(0)}, ${this.y.toFixed(0)}) died. Final health: ${this.currentHealth}, Alive status: ${this.alive}`);
+                }
+                hitEffects.push(new HitEffect(this.x + this.width / 2, this.y + this.height / 2));
+                if (enemyHitSynth) enemyHitSynth.triggerAttackRelease("C2", "16n"); // Play enemy hit sound
+            }
+        }
+
+        class PlayerProjectile extends Entity {
+            constructor(x, y, speed, damage, homing = false) {
+                super(x, y, 10, 5, 1);
+                this.speed = speed;
+                this.damage = damage;
+                this.homing = homing;
+
+                let targetX, targetY;
+                if (this.homing) {
+                    // Find the closest enemy to aim at initially
+                    let closestEnemy = null;
+                    let minDistance = Infinity;
+                    for (const enemy of enemies) {
+                        if (enemy.alive) {
+                            const dist = Math.sqrt(Math.pow(enemy.x - x, 2) + Math.pow(enemy.y - y, 2));
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                closestEnemy = enemy;
+                            }
+                        }
+                    }
+                    if (closestEnemy) {
+                        targetX = closestEnemy.x + closestEnemy.width / 2;
+                        targetY = closestEnemy.y + closestEnemy.height / 2;
+                    } else {
+                        // Fallback to horizontal if no enemies for homing
+                        targetX = player.direction === 'right' ? canvas.width : 0;
+                        targetY = y;
+                    }
+                } else {
+                    // Straight shot: target is simply far along the current direction
+                    targetX = player.direction === 'right' ? canvas.width : 0;
+                    targetY = y;
+                }
+
+                const angle = Math.atan2(targetY - y, targetX - x);
+                this.dx = Math.cos(angle) * this.speed;
+                this.dy = Math.sin(angle) * this.speed;
+            }
+
+            update() {
+                // If homing, continuously track the closest enemy
+                if (this.homing && enemies.length > 0) {
+                    let closestEnemy = null;
+                    let minDistance = Infinity;
+                    for (const enemy of enemies) {
+                        if (enemy.alive) {
+                            const dist = Math.sqrt(Math.pow(enemy.x - this.x, 2) + Math.pow(enemy.y - this.y, 2));
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                closestEnemy = enemy;
+                            }
+                        }
+                    }
+                    if (closestEnemy) {
+                        const angle = Math.atan2(closestEnemy.y + closestEnemy.height/2 - this.y, closestEnemy.x + closestEnemy.width/2 - this.x);
+                        this.dx = Math.cos(angle) * this.speed;
+                        this.dy = Math.sin(angle) * this.speed;
+                    }
+                }
+                // No gravity applied if not homing, as per user request for straight projectiles.
+
+                this.x += this.dx;
+                this.y += this.dy;
+
+                console.log(`[PROJECTILE POS] ID: ${this.id}, X: ${this.x.toFixed(0)}, Y: ${this.y.toFixed(0)}, Alive: ${this.alive}`);
+
+                // Remove if out of bounds
+                if (this.x < -20 || this.x > canvas.width + 20 || this.y < -20 || this.y > canvas.height + 20) {
+                    this.alive = false;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = '#00FFFF'; // Cyan color for bullet
+                ctx.shadowBlur = 10; // Glow effect
+                ctx.shadowColor = '#00FFFF';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Enemy extends Entity {
+            constructor(x, y, width, height, type, health, attackType, attackFrequency, projectileFrequency, projectileSpeed = 5) {
+                super(x, y, width, height, health);
+                this.type = type; // 'textbook', 'pencil', 'ruler'
+                this.attackType = attackType; // 'charge', 'projectile'
+                this.attackFrequency = attackFrequency; // milliseconds
+                this.lastAttackTime = Date.now(); // Initialize last attack time
+                this.projectileFrequency = projectileFrequency; // milliseconds for projectiles
+                this.lastProjectileTime = Date.now(); // Initialize last projectile time
+                this.projectileSpeed = projectileSpeed;
+                this.hitboxOffset = 5; // Default pixels to expand hitbox
+                if (this.type === 'ruler') this.hitboxOffset = 10; // Ruler has slightly larger hitbox
+            }
+
+            update(player) {
+                console.log(`[ENEMY POS] ID: ${this.id}, Type: ${this.type}, X: ${this.x.toFixed(0)}, Y: ${this.y.toFixed(0)}, Health: ${this.currentHealth}, Alive: ${this.alive}`);
+                // Random movement
+                if (Math.random() < 0.02) { // Small chance to change direction
+                    this.dx = (Math.random() - 0.5) * 2 * 2; // -2 to 2
+                }
+                this.x += this.dx;
+
+                // Keep within canvas bounds
+                if (this.x < 0) this.x = 0;
+                if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+
+                // Update animation offset for bobbing
+                this.animationOffset = Math.sin(gameTime / 100 + this.id.charCodeAt(0)) * 2; // Unique offset per enemy
+
+                // Attack logic
+                const currentTime = Date.now();
+                
+                // Charge attack (if applicable)
+                if (this.attackType.includes('charge') && currentTime - this.lastAttackTime > this.attackFrequency) {
+                    this.lastAttackTime = currentTime;
+                    // Simple charge: move directly towards player
+                    this.dx = (player.x > this.x ? 1 : -1) * 3;
+                }
+
+                // Projectile attack (if applicable)
+                if (this.attackType.includes('projectile') && currentTime - this.lastProjectileTime > this.projectileFrequency) {
+                    this.lastProjectileTime = currentTime;
+                    // Shoot projectile towards player
+                    const angle = Math.atan2(player.y + player.height / 2 - (this.y + this.height / 2), player.x + player.width / 2 - (this.x + this.width / 2));
+                    projectiles.push(new EnemyProjectile(this.x + this.width / 2, this.y + this.height / 2, Math.cos(angle) * this.projectileSpeed, Math.sin(angle) * this.projectileSpeed, 10, '#888'));
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y + this.animationOffset); // Apply bobbing animation
+
+                if (this.type === 'textbook') {
+                    ctx.fillStyle = '#8B4513'; // SaddleBrown
+                    ctx.beginPath();
+                    ctx.roundRect(0, 0, this.width, this.height, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333'; // Outline
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.fillStyle = '#654321'; // Darker brown for spine
+                    ctx.fillRect(0, 0, 5, this.height);
+                } else if (this.type === 'pencil') {
+                    ctx.fillStyle = '#7f8c8d'; // Asbestos
+                    ctx.beginPath();
+                    ctx.roundRect(0, 0, this.width, this.height, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333'; // Outline
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.fillStyle = '#c0392b'; // Red tip
+                    ctx.beginPath();
+                    ctx.moveTo(this.width / 2, 0);
+                    ctx.lineTo(0, 15);
+                    ctx.lineTo(this.width, 15);
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (this.type === 'ruler') {
+                    ctx.fillStyle = '#3498db'; // Peter River
+                    ctx.beginPath();
+                    ctx.roundRect(0, 0, this.width, this.height, 5);
+                    ctx.fill();
+                    ctx.strokeStyle = '#333'; // Outline
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                    for (let i = 0; i < this.width; i += 10) {
+                        ctx.fillRect(i, this.height - 5, 2, 5);
+                    }
+                }
+                ctx.restore();
+                this.drawHealthBar();
+            }
+        }
+
+        class PencilShaving extends Enemy {
+            constructor(x, y) {
+                super(x, y, 20, 20, 'pencil_shaving', 1, ['charge'], 2000, 0, 0); // Very low health, simple charge
+                this.color = '#8B4513'; // Brownish color
+                this.hitboxOffset = 2; // Smaller hitbox
+                this.dx = (Math.random() - 0.5) * 4; // Slightly faster random movement
+            }
+
+            update(player) {
+                // More erratic movement for pencil shavings
+                this.dx += (Math.random() - 0.5) * 0.5; // Add small random impulse
+                this.dx *= 0.95; // Dampen movement
+                const targetDx = (player.x > this.x ? 1 : -1) * 2;
+                this.dx = this.dx * 0.9 + targetDx * 0.1; // Lerp towards target
+
+                this.x += this.dx;
+
+                // Keep within canvas bounds
+                if (this.x < 0) this.x = 0;
+                if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+
+                // Pencil shavings don't use the regular attack logic, they just charge
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                // Draw an irregular shape for pencil shaving
+                ctx.moveTo(this.width / 2, 0);
+                ctx.lineTo(this.width, this.height * 0.3);
+                ctx.lineTo(this.width * 0.8, this.height);
+                ctx.lineTo(this.width * 0.2, this.height * 0.9);
+                ctx.lineTo(0, this.height * 0.6);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#333'; // Outline
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.restore();
+                this.drawHealthBar();
+            }
+        }
+
+        class GiantEraserBoss extends Enemy {
+            constructor(x, y, health) {
+                super(x, y, 150, 100, 'giant_eraser', health, ['charge', 'beam'], 3000, 0); // Added 'beam' to attackType
+                this.hitboxOffset = 20; // Larger hitbox for boss
+                this.lastSlamTime = Date.now();
+                this.slamCooldown = 7000; // 7 seconds
+                this.isSlamming = false;
+                this.slamPeakReached = false;
+                this.slamDamageRadius = 150;
+                this.slamDamage = 2;
+
+                this.lastDustShotTime = Date.now();
+                this.dustShotCooldown = 5000; // 5 seconds
+                this.dustProjectileSpeed = 8;
+                this.dustProjectileCount = 5;
+
+                this.lastEraseBeamTime = Date.now() + 10000; // Initial 10-second cooldown
+                this.eraseBeamCooldown = 25000; // 25 seconds
+                this.eraseBeamDuration = 4000; // 4 seconds
+                this.eraseBeamChargeDuration = 1500; // 1.5 seconds charge
+                this.isChargingEraseBeam = false;
+                this.eraseBeamActive = false;
+                this.eraseBeamDamage = 3;
+                this.eraseBeamChargeProgress = 0; // New: for beam charge animation
+
+                this.lastSummonTime = Date.now();
+                this.summonCooldown = 15000; // 15 seconds
+                this.minionsToSummon = 3;
+
+                this.dy = 0; // Ensure boss has its own dy for jumping
+                this.isJumping = false;
+                this.jumpStrength = 20; // Stronger jump for boss
+
+                console.log(`[BOSS INIT] GiantEraserBoss (ID: ${this.id}) created at (${this.x.toFixed(0)}, ${this.y.toFixed(0)}) with health: ${this.currentHealth}/${this.maxHealth}.`);
+            }
+
+            update(player) {
+                console.log(`[BOSS UPDATE] Boss (ID: ${this.id}) - Alive: ${this.alive}, Health: ${this.currentHealth}, X: ${this.x.toFixed(0)}, Y: ${this.y.toFixed(0)}`);
+
+                const currentTime = Date.now();
+
+                // Movement (basic charge towards player)
+                this.dx = (player.x > this.x ? 1 : -1) * 2;
+                this.x += this.dx;
+                if (this.x < 0) this.x = 0;
+                if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+
+                // Slam Attack Logic
+                if (!this.isSlamming && currentTime - this.lastSlamTime > this.slamCooldown) {
+                    this.isSlamming = true;
+                    this.slamPeakReached = false;
+                    this.lastSlamTime = currentTime;
+                    this.dy = -this.jumpStrength * 1.5; // Jump high for slam
+                    console.log(`[BOSS SLAM] Boss (ID: ${this.id}) started slam jump.`);
+                }
+
+                if (this.isSlamming) {
+                    this.y += this.dy;
+                    this.dy += player.gravity; // Apply gravity during jump
+
+                    // Check if reached peak of jump (dy becomes positive)
+                    if (this.dy > 0 && !this.slamPeakReached) {
+                        this.slamPeakReached = true;
+                    }
+
+                    // Check for landing
+                    if (this.y + this.height > canvas.height - 50) {
+                        this.y = canvas.height - 50 - this.height;
+                        this.dy = 0;
+                        this.isSlamming = false;
+                        console.log(`[BOSS SLAM] Boss (ID: ${this.id}) landed. Checking for slam damage.`);
+                        // Add slam effect
+                        slamEffects.push(new SlamEffect(this.x + this.width / 2, canvas.height - 50, this.slamDamageRadius));
+
+                        // Apply slam damage
+                        const dist = Math.sqrt(Math.pow(player.x + player.width / 2 - (this.x + this.width / 2), 2) + Math.pow(player.y + player.height / 2 - (this.y + this.height / 2), 2));
+                        if (dist < this.slamDamageRadius) {
+                            if (!player.isInvincible) {
+                                player.currentHealth -= this.slamDamage;
+                                player.isInvincible = true;
+                                player.invincibleTimer = player.invincibleDuration;
+                                updateUI();
+                                if (playerDamageSynth) playerDamageSynth.triggerAttackRelease("C3", "4n"); // Play player damage sound
+                                console.log(`[COLLISION] Player hit by Boss Slam. Health: ${player.currentHealth}`);
+                            }
+                        }
+                    }
+                }
+
+                // Dust Projectile Attack Logic
+                if (currentTime - this.lastDustShotTime > this.dustShotCooldown) {
+                    this.lastDustShotTime = currentTime;
+                    console.log(`[BOSS ATTACK] Boss (ID: ${this.id}) firing dust projectiles.`);
+                    const angleStep = Math.PI / (this.dustProjectileCount + 1);
+                    for (let i = 0; i < this.dustProjectileCount; i++) {
+                        const angle = Math.atan2(player.y + player.height / 2 - (this.y + this.height / 2), player.x + player.width / 2 - (this.x + this.width / 2)) - (this.dustProjectileCount / 2 - i) * 0.2; // Small spread
+                        projectiles.push(new EnemyProjectile(this.x + this.width / 2, this.y + this.height / 2, Math.cos(angle) * this.dustProjectileSpeed, Math.sin(angle) * this.dustProjectileSpeed, 8, '#b0c4de')); // LightSteelBlue
+                    }
+                }
+
+                // Erase Beam Attack Logic
+                if (this.attackType.includes('beam')) {
+                    if (!this.isChargingEraseBeam && !this.eraseBeamActive && currentTime - this.lastEraseBeamTime > this.eraseBeamCooldown) {
+                        this.isChargingEraseBeam = true;
+                        this.eraseBeamChargeStartTime = currentTime;
+                        this.lastEraseBeamTime = currentTime;
+                        console.log(`[BOSS BEAM] Boss (ID: ${this.id}) started charging Erase Beam.`);
+                    }
+
+                    if (this.isChargingEraseBeam) {
+                        this.eraseBeamChargeProgress = (currentTime - this.eraseBeamChargeStartTime) / this.eraseBeamChargeDuration;
+                        if (this.eraseBeamChargeProgress >= 1) {
+                            this.isChargingEraseBeam = false;
+                            this.eraseBeamActive = true;
+                            console.log(`[BOSS BEAM] Boss (ID: ${this.id}) fired Erase Beam.`);
+                            setTimeout(() => {
+                                this.eraseBeamActive = false;
+                                console.log(`[BOSS BEAM] Boss (ID: ${this.id}) Erase Beam deactivated.`);
+                            }, this.eraseBeamDuration);
+                        }
+                    }
+                }
+
+                // Minion Summon Logic
+                if (currentTime - this.lastSummonTime > this.summonCooldown && enemies.length < 5) { // Limit total enemies to prevent overload
+                    this.lastSummonTime = currentTime;
+                    console.log(`[BOSS SUMMON] Boss (ID: ${this.id}) summoning minions.`);
+                    for (let i = 0; i < this.minionsToSummon; i++) {
+                        const spawnX = this.x + (Math.random() - 0.5) * 200; // Spawn near boss
+                        const spawnY = canvas.height - 50 - 20; // On ground
+                        enemies.push(new PencilShaving(spawnX, spawnY));
+                        summonEffects.push(new SummonEffect(spawnX + 10, spawnY + 10)); // Add summon effect
+                    }
+                }
+            }
+
+            draw() {
+                if (!this.alive) {
+                    console.log(`[DRAWING DEAD BOSS] Skipping drawing of dead Boss (ID: ${this.id}).`);
+                    return;
+                }
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Draw Eraser Body with gradient
+                const gradient = ctx.createLinearGradient(0, 0, this.width, this.height);
+                gradient.addColorStop(0, '#D3D3D3'); // LightGray
+                gradient.addColorStop(0.5, '#A9A9A9'); // DarkGray
+                gradient.addColorStop(1, '#808080'); // Gray
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.roundRect(0, 0, this.width, this.height, 15);
+                ctx.fill();
+                ctx.strokeStyle = '#555'; // Darker outline
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Draw pink tip with subtle gradient
+                const pinkGradient = ctx.createLinearGradient(0, 0, 0, this.height * 0.2);
+                pinkGradient.addColorStop(0, '#FFC0CB'); // Pink
+                pinkGradient.addColorStop(1, '#FFB6C1'); // LightPink
+                ctx.fillStyle = pinkGradient;
+                ctx.fillRect(this.width * 0.1, 0, this.width * 0.8, this.height * 0.2);
+                ctx.strokeStyle = '#E0B0C0'; // Pink outline
+                ctx.lineWidth = 1;
+                ctx.strokeRect(this.width * 0.1, 0, this.width * 0.8, this.height * 0.2);
+
+
+                // Draw metallic band with highlight
+                ctx.fillStyle = '#C0C0C0'; // Silver
+                ctx.fillRect(this.width * 0.05, this.height * 0.15, this.width * 0.9, this.height * 0.1);
+                ctx.fillStyle = 'rgba(255,255,255,0.5)'; // Highlight
+                ctx.fillRect(this.width * 0.05, this.height * 0.15, this.width * 0.9, this.height * 0.03);
+
+
+                ctx.restore();
+                this.drawHealthBar();
+
+                // Draw Erase Beam Charge Effect
+                if (this.isChargingEraseBeam) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.3 + 0.5 * this.eraseBeamChargeProgress;
+                    ctx.fillStyle = `rgba(255, 165, 0, ${0.5 + 0.3 * Math.sin(gameTime / 100)})`; // Pulsing orange
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = 'orange';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width / 2, this.y + this.height / 2, 40 + 30 * this.eraseBeamChargeProgress, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                // Draw Erase Beam if active
+                if (this.eraseBeamActive) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(255, 140, 0, 0.6)'; // DarkOrange transparent beam
+                    ctx.shadowBlur = 30;
+                    ctx.shadowColor = 'darkorange';
+                    ctx.fillRect(0, this.y + this.height / 2 - 20, canvas.width, 40); // Wider horizontal beam
+                    ctx.restore();
+                }
+            }
+        }
+
+        class EnemyProjectile extends Entity {
+            constructor(x, y, dx, dy, radius, color) {
+                super(x, y, radius * 2, radius * 2, 1);
+                this.dx = dx;
+                this.dy = dy;
+                this.radius = radius;
+                this.color = color;
+            }
+
+            update() {
+                // No gravity applied to enemy projectiles, as per user request for straight projectiles.
+                this.x += this.dx;
+                this.y += this.dy;
+
+                // Remove if out of bounds
+                if (this.x < -20 || this.x > canvas.width + 20 || this.y < -20 || this.y > canvas.height + 20) {
+                    this.alive = false;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 8; // Glow effect
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class HitEffect {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.alpha = 1;
+                this.life = 30; // Frames (shorter life)
+            }
+
+            update() {
+                this.life--;
+                this.alpha = this.life / 30;
+                this.radius += 1; // Faster expansion
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = 'rgba(255, 100, 0, 1)'; // Orange-red spark
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class SlamEffect {
+            constructor(x, y, maxRadius) {
+                this.x = x;
+                this.y = y;
+                this.radius = 0;
+                this.maxRadius = maxRadius;
+                this.alpha = 1;
+                this.life = 40; // Frames
+            }
+
+            update() {
+                this.life--;
+                this.alpha = this.life / 40;
+                this.radius = this.maxRadius * (1 - this.alpha); // Expand from 0 to maxRadius
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.strokeStyle = 'rgba(200, 200, 200, 0.7)'; // Grey shockwave
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, Math.PI, Math.PI * 2); // Half circle from ground
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class SummonEffect {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.particles = [];
+                this.life = 30; // Frames
+                for (let i = 0; i < 10; i++) {
+                    this.particles.push({
+                        x: 0,
+                        y: 0,
+                        dx: (Math.random() - 0.5) * 5,
+                        dy: (Math.random() - 0.5) * 5,
+                        radius: Math.random() * 3 + 1,
+                        color: `hsl(${Math.random() * 360}, 100%, 70%)`
+                    });
+                }
+            }
+
+            update() {
+                this.life--;
+                this.particles.forEach(p => {
+                    p.x += p.dx;
+                    p.y += p.dy;
+                    p.dx *= 0.95;
+                    p.dy *= 0.95;
+                });
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.globalAlpha = this.life / 30;
+                this.particles.forEach(p => {
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.restore();
+            }
+        }
+
+
+        // --- Game Logic Functions ---
+
+        function initGame() {
+            gameRunning = false;
+            paused = false;
+            gameOver = false;
+            gameClear = false;
+            selectingSkills = false;
+            gameTime = 0;
+
+            // Reset player
+            player.x = 50;
+            player.y = canvas.height - 50 - player.height; // Ensure player is on ground
+            player.dx = 0;
+            player.dy = 0;
+            player.onGround = false;
+            player.maxHealth = 3;
+            player.currentHealth = 3;
+            player.level = 1;
+            player.totalEnemiesDefeated = 0; // 総敵撃破数（UI表示用）
+            player.enemiesDefeatedSinceLastLevel = 0; // レベルアップ条件用
+            player.projectiles = [];
+            player.lastShotTime = 0;
+            player.isCrouching = false;
+            player.direction = 'right'; // Initialize player direction
+            player.isInvincible = false; // Reset invincibility
+            player.invincibleTimer = 0; // Reset invincibility timer
+            player.skills = {
+                healthUp: 0,
+                playerSpeedUp: 0,
+                bulletSpeedUp: 0,
+                doubleProjectile: false,
+                aura: false,
+                homingProjectile: false,
+                projectileDamageUp: false,
+                punch: { active: false, cooldown: 0, lastUsed: 0, frequency: 4000 }
+            };
+            player.selectedSkillsThisLevel = [];
+
+            enemies = [];
+            projectiles = [];
+            hitEffects = [];
+            slamEffects = [];
+            summonEffects = [];
+            currentStage = 1; // ゲーム開始時は常にステージ1から
+
+            updateUI();
+            startGameButton.style.display = 'block';
+            restartGameButton.style.display = 'none';
+            hideModals();
+            draw(); // Draw initial state
+            console.log("Game initialized. Player health:", player.currentHealth, "/", player.maxHealth);
+        }
+
+        function startGame() {
+            gameRunning = true;
+            gameOver = false;
+            gameClear = false;
+            startGameButton.style.display = 'none';
+            restartGameButton.style.display = 'none';
+            hideModals();
+            loadStage(currentStage); // Initial stage load (Stage 1)
+            gameLoop(0); // Pass initial timestamp for delta time calculation
+        }
+
+        function restartGame() {
+            initGame();
+            startGame();
+        }
+
+        function loadStage(stageNum) {
+            console.log(`[STAGE LOAD] Loading Stage ${stageNum}. Initial enemies array length: ${enemies.length}`);
+            currentStage = stageNum;
+            enemies = []; // Clear enemies only when a new stage is loaded
+            projectiles = [];
+            hitEffects = [];
+            slamEffects = [];
+            summonEffects = [];
+            player.currentHealth = player.maxHealth; // Heal on stage clear
+            applyPlayerSkills(); // Re-apply skills in case max health changed
+            // player.enemiesDefeatedSinceLastLevel はレベルアップ時にリセットされるため、ステージ開始時にはリセットしない
+
+            let numEnemies = 0;
+            let enemyHealth = 0;
+            let enemyAttackFreq = 0;
+            let enemyProjectileFreq = 0;
+            let enemyProjectileSpeed = 5;
+            const minPlayerDistance = 200; // Minimum distance enemies spawn from player's initial X
+
+            switch (currentStage) {
+                case 1:
+                    numEnemies = 12;
+                    enemyHealth = 3;
+                    enemyAttackFreq = 4000;
+                    enemyProjectileFreq = 20000; // 20秒に1回
+                    // ステージ1はすべて突進のみの敵
+                    for (let i = 0; i < numEnemies; i++) {
+                        let x;
+                        let y = canvas.height - 50 - Math.random() * 50 - 40;
+                        let enemyType;
+                        let enemyWidth, enemyHeight;
+
+                        do {
+                            x = Math.random() * (canvas.width - 60) + 30;
+                        } while (Math.abs(x - player.x) < minPlayerDistance);
+
+                        const typeRoll = Math.random();
+                        if (typeRoll < 0.33) {
+                            enemyType = 'textbook';
+                            enemyWidth = 50;
+                            enemyHeight = 40;
+                        } else if (typeRoll < 0.66) {
+                            enemyType = 'pencil';
+                            enemyWidth = 20;
+                            enemyHeight = 50;
+                        } else {
+                            enemyType = 'ruler';
+                            enemyWidth = 60;
+                            enemyHeight = 15;
+                        }
+                        enemies.push(new Enemy(x, y, enemyWidth, enemyHeight, enemyType, enemyHealth, ['charge'], enemyAttackFreq, enemyProjectileFreq, enemyProjectileSpeed));
+                    }
+                    break;
+                case 2:
+                    const numProjectileEnemies = 5;
+                    const numChargeOnlyEnemies = 10;
+                    numEnemies = numProjectileEnemies + numChargeOnlyEnemies; // 合計15体
+                    enemyHealth = 8; // ステージ2の敵の体力を8に調整
+                    enemyAttackFreq = 3000;
+                    enemyProjectileFreq = 20000; // 20秒に1回
+
+                    // 弾を出す敵を5体生成
+                    for (let i = 0; i < numProjectileEnemies; i++) {
+                        let x;
+                        let y = canvas.height - 50 - Math.random() * 50 - 40;
+                        let enemyType;
+                        let enemyWidth, enemyHeight;
+
+                        do {
+                            x = Math.random() * (canvas.width - 60) + 30;
+                        } while (Math.abs(x - player.x) < minPlayerDistance);
+
+                        const typeRoll = Math.random();
+                        if (typeRoll < 0.33) {
+                            enemyType = 'textbook';
+                            enemyWidth = 50;
+                            enemyHeight = 40;
+                        } else if (typeRoll < 0.66) {
+                            enemyType = 'pencil';
+                            enemyWidth = 20;
+                            enemyHeight = 50;
+                        } else {
+                            enemyType = 'ruler';
+                            enemyWidth = 60;
+                            enemyHeight = 15;
+                        }
+                        enemies.push(new Enemy(x, y, enemyWidth, enemyHeight, enemyType, enemyHealth, ['charge', 'projectile'], enemyAttackFreq, enemyProjectileFreq, enemyProjectileSpeed));
+                    }
+
+                    // 突進のみの敵を10体生成
+                    for (let i = 0; i < numChargeOnlyEnemies; i++) {
+                        let x;
+                        let y = canvas.height - 50 - Math.random() * 50 - 40;
+                        let enemyType;
+                        let enemyWidth, enemyHeight;
+
+                        do {
+                            x = Math.random() * (canvas.width - 60) + 30;
+                        } while (Math.abs(x - player.x) < minPlayerDistance);
+
+                        const typeRoll = Math.random();
+                        if (typeRoll < 0.33) {
+                            enemyType = 'textbook';
+                            enemyWidth = 50;
+                            enemyHeight = 40;
+                        } else if (typeRoll < 0.66) {
+                            enemyType = 'pencil';
+                            enemyWidth = 20;
+                            enemyHeight = 50;
+                        } else {
+                            enemyType = 'ruler';
+                            enemyWidth = 60;
+                            enemyHeight = 15;
+                        }
+                        enemies.push(new Enemy(x, y, enemyWidth, enemyHeight, enemyType, enemyHealth, ['charge'], enemyAttackFreq, enemyProjectileFreq, enemyProjectileSpeed));
+                    }
+                    break;
+                case 3: // Boss Stage
+                    numEnemies = 1; // Only one boss
+                    enemyHealth = 300; // ラスボスの体力を300に調整
+                    enemyAttackFreq = 3000; // Base attack frequency, actual boss attacks have their own cooldowns
+                    enemyProjectileFreq = 20000; // Base projectile frequency, boss uses its own
+                    console.log(`[BOSS SPAWN] Attempting to spawn 1 GiantEraserBoss for Stage 3.`);
+                    // Spawn one boss in the center
+                    enemies.push(new GiantEraserBoss(canvas.width / 2 - 75, canvas.height - 50 - 100, enemyHealth)); // Adjust x, y, width, height for new boss
+                    enemies.forEach((enemy) => {
+                        if (enemy instanceof GiantEraserBoss) {
+                            console.log(`[BOSS SPAWNED] GiantEraserBoss (ID: ${enemy.id}) spawned at (${enemy.x.toFixed(0)}, ${enemy.y.toFixed(0)}) with health: ${enemy.currentHealth}, alive: ${enemy.alive}`);
+                        }
+                    });
+                    break;
+            }
+
+            console.log(`[STAGE LOAD] Stage ${stageNum} fully loaded. Total enemies after spawn: ${enemies.length}.`);
+            updateUI();
+        }
+
+        function update(deltaTime) {
+            if (paused || gameOver || gameClear || selectingSkills) return;
+
+            gameTime += deltaTime; // Update global game time
+
+            // Update invincibility timer
+            if (player.isInvincible) {
+                player.invincibleTimer -= deltaTime;
+                if (player.invincibleTimer <= 0) {
+                    player.isInvincible = false;
+                    player.invincibleTimer = 0;
+                }
+            }
+
+            // Player horizontal movement
+            player.dx = 0;
+            if (keys.a) {
+                player.dx = -player.speed;
+                player.direction = 'left'; // Set direction to left
+            }
+            if (keys.d) {
+                player.dx = player.speed;
+                player.direction = 'right'; // Set direction to right
+            }
+
+            // Player jumping
+            if (keys.space && player.onGround) {
+                player.dy = -player.jumpStrength;
+                player.onGround = false;
+                if (playerJumpSynth) playerJumpSynth.triggerAttackRelease("C4", "8n"); // Play jump sound
+            }
+
+            // Player crouching
+            const normalHeight = 60;
+            const crouchHeight = 30;
+            if (keys.shift) {
+                if (!player.isCrouching) {
+                    player.y += (normalHeight - crouchHeight); // Adjust Y to keep bottom on ground
+                }
+                player.isCrouching = true;
+                player.height = crouchHeight;
+            } else {
+                if (player.isCrouching) {
+                    player.y -= (normalHeight - crouchHeight); // Adjust Y back
+                }
+                player.isCrouching = false;
+                player.height = normalHeight;
+            }
+
+
+            // Apply gravity
+            if (!player.onGround) {
+                player.dy += player.gravity;
+            }
+
+            // Update player position
+            player.x += player.dx;
+            player.y += player.dy;
+
+            // Keep player within canvas bounds
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+            // Check if player is on ground
+            if (player.y + player.height > canvas.height - 50) { // Ground level
+                player.y = canvas.height - 50 - player.height;
+                player.dy = 0;
+                player.onGround = true;
+            }
+
+            // Player shooting
+            const currentTime = Date.now();
+            if (keys.l && currentTime - player.lastShotTime > player.shotCooldown) {
+                player.lastShotTime = currentTime;
+                let projectileDamage = player.skills.projectileDamageUp ? 2 : 1;
+                let projectileSpeed = 10 + player.skills.bulletSpeedUp * 0.5;
+                player.shootingEffectTimer = 10; // Activate shooting effect for a few frames
+                if (playerShootSynth) playerShootSynth.triggerAttackRelease("C5", "16n"); // Play shoot sound
+
+                if (player.skills.doubleProjectile) {
+                    // Shoot two projectiles slightly offset
+                    player.projectiles.push(new PlayerProjectile(player.x + player.width / 2, player.y + player.height / 2 - 5, projectileSpeed, projectileDamage, player.skills.homingProjectile));
+                    player.projectiles.push(new PlayerProjectile(player.x + player.width / 2, player.y + player.height / 2 + 5, projectileSpeed, projectileDamage, player.skills.homingProjectile));
+                } else {
+                    player.projectiles.push(new PlayerProjectile(player.x + player.width / 2, player.y + player.height / 2, projectileSpeed, projectileDamage, player.skills.homingProjectile));
+                }
+            }
+            if (player.shootingEffectTimer > 0) {
+                player.shootingEffectTimer--;
+            }
+
+            // Player punch skill
+            if (player.skills.punch.active && keys.k && currentTime - player.skills.punch.lastUsed > player.skills.punch.frequency) {
+                player.skills.punch.lastUsed = currentTime;
+                // Perform punch attack (e.g., a small hit box in front of player)
+                const punchRange = 60;
+                const punchDamage = 2;
+                for (const enemy of enemies) {
+                    if (enemy.alive) {
+                        // Use expanded hitbox for punch collision
+                        const enemyHitboxX = enemy.x - enemy.hitboxOffset;
+                        const enemyHitboxY = enemy.y - enemy.hitboxOffset;
+                        const enemyHitboxWidth = enemy.width + enemy.hitboxOffset * 2;
+                        const enemyHitboxHeight = enemy.height + enemy.hitboxOffset * 2;
+
+                        // Adjust punch hitbox based on player direction
+                        const punchX = player.direction === 'right' ? player.x + player.width : player.x - punchRange;
+
+                        if (checkCollision(punchX, player.y, punchRange, player.height, enemyHitboxX, enemyHitboxY, enemyHitboxWidth, enemyHitboxHeight)) {
+                            console.log(`[COLLISION] Player punch hit Enemy (ID: ${enemy.id}, Type: ${enemy.type}).`);
+                            enemy.takeDamage(punchDamage);
+                            if (!enemy.alive) {
+                                player.totalEnemiesDefeated++; // 総敵撃破数を更新
+                                player.enemiesDefeatedSinceLastLevel++; // レベルアップ条件用カウントを更新
+                                checkLevelUp();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update player projectiles
+            for (let i = player.projectiles.length - 1; i >= 0; i--) {
+                const p = player.projectiles[i];
+                p.update();
+                if (!p.alive) {
+                    player.projectiles.splice(i, 1);
+                    continue;
+                }
+
+                // Collision with enemies
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    if (enemy.alive) {
+                        // Use expanded hitbox for projectile collision
+                        const enemyHitboxX = enemy.x - enemy.hitboxOffset;
+                        const enemyHitboxY = enemy.y - enemy.hitboxOffset;
+                        const enemyHitboxWidth = enemy.width + enemy.hitboxOffset * 2;
+                        const enemyHitboxHeight = enemy.height + enemy.hitboxOffset * 2;
+
+                        if (checkCollision(p.x, p.y, p.width, p.height, enemyHitboxX, enemyHitboxY, enemyHitboxWidth, enemyHitboxHeight)) {
+                            console.log(`[COLLISION] Projectile (ID: ${p.id}) hit Enemy (ID: ${enemy.id}, Type: ${enemy.type}).`);
+                            enemy.takeDamage(p.damage);
+                            p.alive = false; // Projectile disappears on hit
+                            if (!enemy.alive) {
+                                player.totalEnemiesDefeated++; // 総敵撃破数を更新
+                                player.enemiesDefeatedSinceLastLevel++; // レベルアップ条件用カウントを更新
+                                checkLevelUp();
+                            }
+                            break; // Only hit one enemy per projectile
+                        }
+                    }
+                }
+            }
+
+            // Update enemies and enemy projectiles
+            let allEnemiesDefeated = true;
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                if (enemy.alive) {
+                    enemy.update(player);
+                    allEnemiesDefeated = false;
+
+                    // Enemy-player collision (charge attack)
+                    // Use expanded hitbox for enemy charge collision with player
+                    const enemyHitboxX = enemy.x - enemy.hitboxOffset;
+                    const enemyHitboxY = enemy.y - enemy.hitboxOffset;
+                    const enemyHitboxWidth = enemy.width + enemy.hitboxOffset * 2;
+                    const enemyHitboxHeight = enemy.height + enemy.hitboxOffset * 2;
+
+                    if (enemy.attackType.includes('charge') && checkCollision(player.x, player.y, player.width, player.height, enemyHitboxX, enemyHitboxY, enemyHitboxWidth, enemyHitboxHeight)) {
+                        console.log(`[COLLISION] Enemy charge hit Player.`);
+                        if (!player.isInvincible) { // Check invincibility
+                            player.currentHealth--;
+                            player.isInvincible = true;
+                            player.invincibleTimer = player.invincibleDuration;
+                            updateUI();
+                            if (playerDamageSynth) playerDamageSynth.triggerAttackRelease("C3", "4n"); // Play player damage sound
+                        }
+                    }
+
+                    // Aura skill effect
+                    // Use expanded hitbox for aura collision
+                    if (player.skills.aura && checkCollision(player.x - 10, player.y - 10, player.width + 20, player.height + 20, enemyHitboxX, enemyHitboxY, enemyHitboxWidth, enemyHitboxHeight)) {
+                        const auraDamageCooldown = 500; // 0.5 seconds
+                        if (currentTime - enemy.lastAuraDamageTime > auraDamageCooldown) {
+                            console.log(`[AURA DAMAGE] Player aura hit Enemy (ID: ${enemy.id}, Type: ${enemy.type}).`);
+                            enemy.takeDamage(1); // 1 gauge damage
+                            enemy.lastAuraDamageTime = currentTime; // Reset cooldown for this enemy
+                            if (!enemy.alive) {
+                                player.totalEnemiesDefeated++; // 総敵撃破数を更新
+                                player.enemiesDefeatedSinceLastLevel++; // レベルアップ条件用カウントを更新
+                                checkLevelUp();
+                            }
+                        }
+                    }
+
+                    // Boss Erase Beam attack
+                    if (enemy instanceof GiantEraserBoss && enemy.eraseBeamActive && checkCollision(player.x, player.y, player.width, player.height, 0, enemy.y + enemy.height / 2 - 20, canvas.width, 40)) {
+                        console.log(`[COLLISION] Boss Erase Beam hit Player.`);
+                        if (!player.isInvincible) { // Check invincibility
+                            player.currentHealth -= enemy.eraseBeamDamage;
+                            player.isInvincible = true;
+                            player.invincibleTimer = player.invincibleDuration;
+                            updateUI();
+                            if (playerDamageSynth) playerDamageSynth.triggerAttackRelease("C3", "4n"); // Play player damage sound
+                        }
+                    }
+
+                } else {
+                    console.log(`[ENEMY REMOVAL PRE-SPLICE] Removing dead enemy (type: ${enemy.type || 'Unknown'}, ID: ${enemy.id}). Enemies before splice: ${enemies.length}`);
+                    enemies.splice(i, 1);
+                    console.log(`[ENEMY REMOVAL POST-SPLICE] Removed enemy. Enemies after splice: ${enemies.length}`);
+                }
+            }
+
+            // Update enemy projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.update();
+                if (!p.alive) {
+                    projectiles.splice(i, 1);
+                    continue;
+                }
+
+                // Collision with player
+                if (checkCollision(p.x, p.y, p.width, p.height, player.x, player.y, player.width, player.height)) {
+                    console.log(`[COLLISION] Enemy projectile hit Player.`);
+                    if (!player.isInvincible) { // Check invincibility
+                        player.currentHealth--;
+                        player.isInvincible = true;
+                        player.invincibleTimer = player.invincibleDuration;
+                        updateUI();
+                        if (playerDamageSynth) playerDamageSynth.triggerAttackRelease("C3", "4n"); // Play player damage sound
+                    }
+                    p.alive = false; // Projectile disappears on hit
+                }
+            }
+
+            // Update effects
+            for (let i = hitEffects.length - 1; i >= 0; i--) {
+                hitEffects[i].update();
+                if (hitEffects[i].life <= 0) {
+                    hitEffects.splice(i, 1);
+                }
+            }
+
+            for (let i = slamEffects.length - 1; i >= 0; i--) {
+                slamEffects[i].update();
+                if (slamEffects[i].life <= 0) {
+                    slamEffects.splice(i, 1);
+                }
+            }
+
+            for (let i = summonEffects.length - 1; i >= 0; i--) {
+                summonEffects[i].update();
+                if (summonEffects[i].life <= 0) {
+                    summonEffects.splice(i, 1);
+                }
+            }
+
+
+            // Check game over
+            if (player.currentHealth <= 0) {
+                gameOver = true;
+                gameRunning = false;
+                getGameSummary('over', currentStage, player.totalEnemiesDefeated, player.level, player.skills); // Call summary
+                showModal(gameOverModal);
+                restartGameButton.style.display = 'block';
+                if (gameOverSynth) gameOverSynth.triggerAttackRelease(["C3", "E2", "G1"], "1s"); // Play game over sound
+            }
+
+            // Check stage clear
+            // allEnemiesDefeated is true if the enemies array is empty after processing
+            allEnemiesDefeated = enemies.length === 0;
+            console.log(`[UPDATE END] Remaining enemies: ${enemies.length}. All enemies defeated flag: ${allEnemiesDefeated}. Game Clear status: ${gameClear}. Game Over status: ${gameOver}.`);
+            if (allEnemiesDefeated && !gameOver) {
+                console.log("[GAME CLEAR TRIGGER] All enemies defeated and not game over. Attempting to trigger game clear.");
+                if (currentStage < 3) { // ステージ1またはステージ2をクリアした場合
+                    console.log(`[STAGE ADVANCE] Stage ${currentStage} cleared. Advancing to Stage ${currentStage + 1}.`);
+                    currentStage++; // 次のステージに進む
+                    loadStage(currentStage); // 新しいステージをすぐにロード
+                    gameLoop(0); // ゲームループを再開
+                } else { // ステージ3（ボスステージ）をクリアした場合
+                    console.log("[GAME CLEAR FINAL] Stage 3 cleared. Setting gameClear and showing modal.");
+                    gameClear = true;
+                    gameRunning = false; // Ensure game stops
+                    getGameSummary('clear', currentStage, player.totalEnemiesDefeated, player.level, player.skills); // Call summary
+                    showModal(gameClearModal);
+                    restartGameButton.style.display = 'block';
+                    if (gameClearSynth) gameClearSynth.triggerAttackRelease(["C5", "E5", "G5"], "0.5s"); // Play game clear sound
+                }
+            }
+
+            updateUI();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+            // Draw background based on stage
+            drawBackground(currentStage);
+
+            // Draw ground
+            ctx.fillStyle = '#8B4513'; // Brown ground
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+            // Draw player
+            drawPlayer();
+
+            // Draw player projectiles
+            player.projectiles.forEach(p => p.draw());
+
+            // Draw enemies
+            enemies.forEach(enemy => {
+                if (enemy instanceof GiantEraserBoss) {
+                    console.log(`[DRAWING BOSS] GiantEraserBoss (ID: ${enemy.id}) at X: ${enemy.x.toFixed(0)}, Y: ${enemy.y.toFixed(0)}, Alive: ${enemy.alive}, Health: ${enemy.currentHealth}`);
+                } else if (enemy instanceof PencilShaving) {
+                    console.log(`[DRAWING MINION] PencilShaving (ID: ${enemy.id}) at X: ${enemy.x.toFixed(0)}, Y: ${enemy.y.toFixed(0)}, Alive: ${enemy.alive}, Health: ${enemy.currentHealth}`);
+                }
+                enemy.draw();
+            });
+
+            // Draw enemy projectiles
+            projectiles.forEach(p => p.draw());
+
+            // Draw aura if active
+            if (player.skills.aura) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)'; // Yellow transparent aura
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                ctx.arc(player.x + player.width / 2, player.y + player.height / 2, Math.max(player.width, player.height) / 2 + 20, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Draw effects
+            hitEffects.forEach(effect => effect.draw());
+            slamEffects.forEach(effect => effect.draw());
+            summonEffects.forEach(effect => effect.draw());
+        }
+
+        function drawPlayer() {
+            ctx.save();
+            // Apply bobbing animation
+            const bobbingOffset = Math.sin(gameTime / 100) * 2; // Adjust speed and amplitude as needed
+            ctx.translate(player.x, player.y + bobbingOffset);
+
+            // Translate and scale based on player direction for flipping
+            if (player.direction === 'left') {
+                ctx.translate(player.width, 0); // Move origin to right edge for flip
+                ctx.scale(-1, 1); // Flip horizontally
+            } else { // 'right'
+                // No scale change needed
+            }
+
+            // Blinking effect during invincibility
+            if (player.isInvincible) {
+                // Blink every 100ms (adjust as needed)
+                if (Math.floor(gameTime / 100) % 2 === 0) {
+                    ctx.globalAlpha = 0.5; // Make player semi-transparent
+                }
+            }
+
+            // Body
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.roundRect(0, 0, player.width, player.height, 5);
+            ctx.fill();
+            ctx.strokeStyle = '#222'; // Dark outline
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+
+            // Head
+            ctx.fillStyle = '#f0d9b5'; // Skin tone
+            ctx.beginPath();
+            ctx.arc(player.width / 2, 0, player.width / 2, Math.PI, Math.PI * 2); // Top half circle for head
+            ctx.fill();
+            ctx.strokeStyle = '#222'; // Dark outline
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Eyes (simple dots)
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(player.width * 0.3, player.height * 0.15, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(player.width * 0.7, player.height * 0.15, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Shooting effect - Adjust position for flipped drawing
+            if (player.shootingEffectTimer > 0) {
+                ctx.fillStyle = `rgba(0, 255, 255, ${player.shootingEffectTimer / 10})`; // Cyan flash
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#00FFFF';
+                ctx.beginPath();
+                // If facing right, effect is at player.width + 5 (right side of player)
+                // If facing left (flipped), effect needs to be at -5 (left side of player after flip)
+                ctx.arc(player.direction === 'right' ? player.width + 5 : -5, player.height / 2, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0; // Reset shadow
+            }
+
+            ctx.restore(); // Restore alpha and transformations
+        }
+
+        function drawBackground(stage) {
+            ctx.save();
+            if (stage === 1) {
+                // Outside school (light green/blue sky with simple trees/clouds)
+                ctx.fillStyle = '#a8e6cf'; // Sky color
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Sun / Moon
+                ctx.fillStyle = '#FFD700'; // Gold
+                ctx.beginPath();
+                ctx.arc(canvas.width - 80, 80, 40, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Clouds
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.beginPath();
+                ctx.arc(100, 80, 40, 0, Math.PI * 2);
+                ctx.arc(150, 70, 50, 0, Math.PI * 2);
+                ctx.arc(190, 90, 35, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(canvas.width - 250, 120, 30, 0, Math.PI * 2);
+                ctx.arc(canvas.width - 200, 110, 45, 0, Math.PI * 2);
+                ctx.arc(canvas.width - 160, 130, 30, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Distant Hills
+                ctx.fillStyle = '#6B8E23'; // OliveDrab
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height - 200);
+                ctx.bezierCurveTo(canvas.width * 0.2, canvas.height - 250, canvas.width * 0.4, canvas.height - 180, canvas.width * 0.6, canvas.height - 220);
+                ctx.bezierCurveTo(canvas.width * 0.8, canvas.height - 260, canvas.width, canvas.height - 200, canvas.width, canvas.height - 50);
+                ctx.lineTo(0, canvas.height - 50);
+                ctx.closePath();
+                ctx.fill();
+
+
+                // Simple trees
+                ctx.fillStyle = '#8B4513'; // Tree trunk
+                ctx.fillRect(250, canvas.height - 150, 20, 100);
+                ctx.fillStyle = '#228B22'; // ForestGreen
+                ctx.beginPath();
+                ctx.arc(260, canvas.height - 150, 50, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillRect(canvas.width - 300, canvas.height - 180, 25, 130);
+                ctx.fillStyle = '#3CB371'; // MediumSeaGreen
+                ctx.beginPath();
+                ctx.arc(canvas.width - 287, canvas.height - 180, 60, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (stage === 2) {
+                // Inside school (light blue walls with simple desks/windows)
+                ctx.fillStyle = '#cffafe'; // Wall color
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Windows
+                ctx.fillStyle = '#ADD8E6'; // Light blue glass
+                ctx.fillRect(100, 80, 150, 100);
+                ctx.fillRect(canvas.width - 250, 80, 150, 100);
+                ctx.strokeStyle = '#654321'; // Window frame
+                ctx.lineWidth = 5;
+                ctx.strokeRect(100, 80, 150, 100);
+                ctx.strokeRect(canvas.width - 250, 80, 150, 100);
+
+                // Blackboard
+                ctx.fillStyle = '#36454F'; // Charcoal
+                ctx.fillRect(canvas.width / 2 - 150, 50, 300, 150);
+                ctx.strokeStyle = '#8B4513'; // Wood frame
+                ctx.lineWidth = 5;
+                ctx.strokeRect(canvas.width / 2 - 150, 50, 300, 150);
+                ctx.fillStyle = '#F5F5DC'; // Chalk
+                ctx.font = '30px Arial';
+                ctx.fillText('WELCOME!', canvas.width / 2 - 70, 130);
+
+                // Clock
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, 250, 30, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2, 250);
+                ctx.lineTo(canvas.width / 2 + 20 * Math.cos(Math.PI / 2), 250 + 20 * Math.sin(Math.PI / 2));
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2, 250);
+                ctx.lineTo(canvas.width / 2 + 15 * Math.cos(Math.PI * 0.75), 250 + 15 * Math.sin(Math.PI * 0.75));
+                ctx.stroke();
+
+
+                // Desks
+                ctx.fillStyle = '#A0522D'; // Sienna
+                ctx.fillRect(200, canvas.height - 150, 80, 50); // Desk top
+                ctx.fillRect(210, canvas.height - 100, 10, 50); // Leg 1
+                ctx.fillRect(260, canvas.height - 100, 10, 50); // Leg 2
+
+                ctx.fillRect(canvas.width - 300, canvas.height - 150, 80, 50); // Desk top
+                ctx.fillRect(canvas.width - 290, canvas.height - 100, 10, 50); // Leg 1
+                ctx.fillRect(canvas.width - 240, canvas.height - 100, 10, 50); // Leg 2
+
+            } else if (stage === 3) {
+                // Boss arena (dark, ominous, with glowing lines)
+                ctx.fillStyle = '#1a0000'; // Very dark red/brown base, even darker
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Glowing cracks/energy lines (pulsating)
+                const pulse = Math.sin(gameTime / 200) * 0.2 + 0.5; // 0.3 to 0.7
+                ctx.strokeStyle = `rgba(255, 50, 50, ${pulse})`; // Bright red glow
+                ctx.lineWidth = 3;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = `rgba(255, 0, 0, ${pulse + 0.1})`;
+
+                // Vertical lines
+                for (let i = 0; i < canvas.width; i += 70) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i + 20, canvas.height); // Slightly angled
+                    ctx.stroke();
+                }
+
+                // Horizontal lines
+                for (let i = 0; i < canvas.height; i += 70) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i);
+                    ctx.lineTo(canvas.width, i + 20); // Slightly angled
+                    ctx.stroke();
+                }
+
+                ctx.shadowBlur = 0; // Reset shadow
+
+                // Central ominous glow (more intense)
+                const gradient = ctx.createRadialGradient(
+                    canvas.width / 2, canvas.height / 2, 0,
+                    canvas.width / 2, canvas.height / 2, Math.min(canvas.width, canvas.height) / 2
+                );
+                gradient.addColorStop(0, `rgba(255, 0, 0, ${pulse * 0.4})`); // Red core
+                gradient.addColorStop(0.5, `rgba(100, 0, 0, ${pulse * 0.2})`); // Darker red
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Transparent outer
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height / 2, Math.min(canvas.width, canvas.height) / 2, 0, Math.PI * 2);
+                ctx.fill();
+
+            }
+            ctx.restore();
+        }
+
+
+        function gameLoop(timestamp) {
+            const deltaTime = timestamp - lastFrameTime;
+            lastFrameTime = timestamp;
+
+            if (!gameRunning) return;
+
+            update(deltaTime);
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- Utility Functions ---
+
+        // Checks for collision between two rectangles
+        function checkCollision(x1, y1, w1, h1, x2, y2, w2, h2) {
+            return x1 < x2 + w2 &&
+                   x1 + w1 > x2 &&
+                   y1 < y2 + h2 &&
+                   y1 + h1 > y2;
+        }
+
+
+        function updateUI() {
+            playerHealthText.textContent = `${player.currentHealth}/${player.maxHealth}`; // 体力表示を現在の体力/最大体力に変更
+            playerHealthBar.style.width = `${(player.currentHealth / player.maxHealth) * 100}%`;
+            currentStageText.textContent = currentStage;
+            playerLevelText.textContent = player.level;
+            enemiesDefeatedText.textContent = player.totalEnemiesDefeated; // UI表示は総撃破数
+        }
+
+        function showModal(modalElement) {
+            modalElement.style.display = 'flex';
+        }
+
+        function hideModals() {
+            pauseModal.style.display = 'none';
+            gameOverModal.style.display = 'none';
+            gameClearModal.style.display = 'none';
+            skillSelectionModal.style.display = 'none';
+            hintDisplay.textContent = ''; // Clear hint when closing pause modal
+            hintDisplay.classList.remove('loading');
+            gameOverSummaryDisplay.textContent = ''; // Clear summary
+            gameOverSummaryDisplay.classList.remove('loading');
+            gameClearSummaryDisplay.textContent = ''; // Clear summary
+            gameClearSummaryDisplay.classList.remove('loading');
+        }
+
+        // --- Level Up and Skill Selection ---
+
+        const allSkills = {
+            stage1: [
+                { id: 'healthUp', name: '体力アップ', description: '最大体力が1ゲージ増加する。', type: 'passive' },
+                { id: 'playerSpeedUp', name: '移動スピードアップ', description: 'プレイヤーの移動速度が少し上がる。', type: 'passive' },
+                { id: 'bulletSpeedUp', name: '弾速アップ', description: 'プレイヤーの弾の速度と連射速度が少し上がる。', type: 'passive' }
+            ],
+            stage2: [
+                { id: 'doubleProjectile', name: '弾2倍', description: '一度に2発の弾を発射する。', type: 'passive' },
+                { id: 'aura', name: 'オーラ', description: 'プレイヤーにオーラを付与し、触れた敵の体力を継続的に減らす。', type: 'passive' },
+                { id: 'homingProjectile', name: 'ホーミング弾', description: '発射した弾が敵を自動追尾する。', type: 'passive' },
+                { id: 'projectileDamageUp', name: '弾ダメージアップ', description: '弾の攻撃で敵の体力を2ゲージ減らせる。', type: 'passive' },
+                { id: 'punch', name: 'パンチ', description: 'Kキーでパンチを繰り出す。4秒に1回、敵の体力を2ゲージ減らせる。', type: 'active' }
+            ]
+        };
+
+        function checkLevelUp() {
+            // レベルアップ条件: 5体倒せばレベルアップ
+            if (player.level < 7 && player.enemiesDefeatedSinceLastLevel >= 5) {
+                player.level++;
+                player.enemiesDefeatedSinceLastLevel = 0; // 次のレベルアップのためにカウントをリセット
+                updateUI();
+
+                // レベルアップ後に無敵時間を付与
+                player.isInvincible = true;
+                player.invincibleTimer = player.invincibleDuration;
+
+                // スキル選択をトリガー (ステージ3以外)
+                if (currentStage < 3) {
+                    gameRunning = false; // ゲームを一時停止
+                    selectingSkills = true;
+                    showSkillSelectionModal();
+                }
+            }
+        }
+
+        function showSkillSelectionModal() {
+            skillListDiv.innerHTML = ''; // 以前のスキルをクリア
+            confirmSkillsButton.disabled = true;
+            player.selectedSkillsThisLevel = []; // このレベルで選択されたスキルをリセット
+
+            let availableSkills = [];
+            // 現在のステージに基づいて利用可能なスキルセットを決定
+            if (currentStage === 1) {
+                availableSkills = allSkills.stage1;
+            } else if (currentStage === 2) {
+                availableSkills = allSkills.stage2;
+            } else { // ステージ3の場合、スキルは提供しない
+                hideModals();
+                selectingSkills = false;
+                gameRunning = true;
+                gameLoop(0); // ゲームをすぐに再開
+                return;
+            }
+
+            // 既に取得済みのスキルを除外
+            const skillsToChooseFrom = availableSkills.filter(skill => {
+                const playerSkillState = player.skills[skill.id];
+
+                if (typeof playerSkillState === 'number') {
+                    // Stackable passive skills are always available
+                    return true;
+                } else if (typeof playerSkillState === 'boolean') {
+                    // Simple boolean skills are available only if not yet acquired
+                    return !playerSkillState;
+                } else if (typeof playerSkillState === 'object' && playerSkillState !== null && 'active' in playerSkillState) {
+                    // Active skills with 'active' property are available only if not yet active
+                    return !playerSkillState.active;
+                }
+                return false; // Exclude undefined skills
+            });
+            console.log(`[SKILL SELECTION] Available skills to present:`, skillsToChooseFrom.map(s => s.id));
+
+
+            // 選択可能なスキルがない場合、モーダルを表示せずにゲームを再開
+            if (skillsToChooseFrom.length === 0) {
+                console.log("[SKILL SELECTION] No new skills available. Resuming game.");
+                hideModals();
+                selectingSkills = false;
+                gameRunning = true;
+                gameLoop(0); // ゲームをすぐに再開
+                return;
+            }
+
+            // ランダムに2つのスキルを選択して提示
+            const presentedSkills = [];
+            const tempSkillsToPresentFrom = [...skillsToChooseFrom]; // コピーを作成してランダム選択
+
+            while (presentedSkills.length < 2 && tempSkillsToPresentFrom.length > 0) {
+                const randomIndex = Math.floor(Math.random() * tempSkillsToPresentFrom.length);
+                presentedSkills.push(tempSkillsToPresentFrom.splice(randomIndex, 1)[0]);
+            }
+            console.log("[SKILL SELECTION] Presented skills:", presentedSkills.map(s => s.id));
+
+            presentedSkills.forEach(skill => {
+                const skillItem = document.createElement('div');
+                skillItem.classList.add('skill-item', 'rounded-lg', 'p-4', 'cursor-pointer', 'hover:bg-gray-200');
+                skillItem.innerHTML = `
+                    <h3 class="text-lg font-semibold">${skill.name}</h3>
+                    <p class="text-sm text-gray-600">${skill.description}</p>
+                `;
+                skillItem.dataset.skillId = skill.id;
+                skillItem.addEventListener('click', () => toggleSkillSelection(skillItem, skill.id));
+                skillListDiv.appendChild(skillItem);
+            });
+
+            showModal(skillSelectionModal);
+        }
+
+        function toggleSkillSelection(skillItem, skillId) {
+            // 他のすべてのスキルを非選択状態にする
+            document.querySelectorAll('.skill-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            player.selectedSkillsThisLevel = []; // 以前の選択をクリア
+
+            // クリックされたスキルを選択状態にする
+            skillItem.classList.add('selected');
+            player.selectedSkillsThisLevel.push(skillId);
+
+            confirmSkillsButton.disabled = player.selectedSkillsThisLevel.length !== 1; // 1つのスキルが選択されている場合のみ有効化
+        }
+
+        confirmSkillsButton.addEventListener('click', () => {
+            if (player.selectedSkillsThisLevel.length === 1) { // 1つのスキルが選択されている場合のみ許可
+                const selectedSkillId = player.selectedSkillsThisLevel[0];
+                const skillData = [...allSkills.stage1, ...allSkills.stage2].find(s => s.id === selectedSkillId);
+                if (skillData) {
+                    const oldMaxHealth = player.maxHealth; // 古い最大体力を保存
+
+                    if (skillData.type === 'passive') {
+                        if (typeof player.skills[selectedSkillId] === 'number') {
+                            player.skills[selectedSkillId]++;
+                        } else {
+                            player.skills[selectedSkillId] = true;
+                        }
+                    } else { // アクティブスキル
+                        player.skills[selectedSkillId].active = true;
+                        console.log(`[SKILL ACQUIRED] ${selectedSkillId} activated.`);
+                    }
+
+                    // 全てのパッシブスキルを適用してmaxHealth、speed、cooldownなどを更新
+                    applyPlayerSkills();
+
+                    // 選択されたスキルが「体力アップ」の場合、現在の体力も増加させる
+                    if (selectedSkillId === 'healthUp') {
+                        const healthIncreaseAmount = player.maxHealth - oldMaxHealth;
+                        player.currentHealth = Math.min(player.currentHealth + healthIncreaseAmount, player.maxHealth);
+                        console.log(`[SKILL EFFECT] Health Up: maxHealth to ${player.maxHealth}, currentHealth to ${player.currentHealth}`);
+                    }
+                    if (skillAcquireSynth) skillAcquireSynth.triggerAttackRelease("E5", "8n"); // Play skill acquire sound
+                }
+                console.log(`[SKILL SELECTION] Selected skill: ${selectedSkillId}. New player.skills state:`, JSON.parse(JSON.stringify(player.skills))); // Deep copy for logging
+                updateUI(); // 変更を反映するためにUIを更新
+                hideModals();
+                selectingSkills = false;
+                gameRunning = true;
+                gameLoop(0);
+            }
         });
 
-        // Create Chart.js chart
-        const ctx = document.getElementById('stageChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: gameData.stages.map(s => s.name),
-                datasets: [
-                    {
-                        label: '敵の体力 (ゲージ)',
-                        data: gameData.stages.map(s => s.enemyHealth),
-                        backgroundColor: 'rgba(239, 68, 68, 0.6)',
-                        borderColor: 'rgba(239, 68, 68, 1)',
-                        borderWidth: 1,
-                        yAxisID: 'yHealth',
-                    },
-                    {
-                        label: '敵の数',
-                        data: gameData.stages.map(s => s.enemyCount),
-                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-                        borderColor: 'rgba(59, 130, 246, 1)',
-                        borderWidth: 1,
-                        yAxisID: 'yCount',
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    yHealth: {
-                        type: 'linear',
-                        position: 'left',
-                        title: {
-                            display: true,
-                            text: '体力 (ゲージ)'
-                        }
-                    },
-                    yCount: {
-                        type: 'linear',
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: '敵の数'
-                        },
-                        grid: {
-                            drawOnChartArea: false, // only want the grid lines for one axis to show up
-                        },
-                    }
-                },
-                plugins: {
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    legend: {
-                        position: 'top',
+        // --- Gemini API Integration for Hints ---
+
+        async function getEnemyWeaknessHint(stageNumber, enemyTypes) {
+            hintDisplay.textContent = ''; // Clear previous hint
+            hintDisplay.classList.add('loading'); // Show loading indicator
+            hintDisplay.textContent = 'ヒント生成中...'; // Initial loading text
+
+            // Map enemy types to Japanese for the prompt
+            const enemyTypeMap = {
+                'textbook': '教科書',
+                'pencil': '鉛筆',
+                'ruler': '定規',
+                'giant_eraser': '巨大な消しゴム (ボス)',
+                'pencil_shaving': '鉛筆の削りカス'
+            };
+            const japaneseEnemyTypes = enemyTypes.map(type => enemyTypeMap[type] || type).join(', ');
+
+            const prompt = `あなたはローグライクアクションゲームの賢者です。プレイヤーに現在のステージの敵の弱点に関する戦術的なヒントを与えてください。現在のステージはステージ${stageNumber}です。敵の種類は${japaneseEnemyTypes}です。簡潔で、少し神秘的で、具体的な戦略的アドバイスを含むトーンで答えてください。`;
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    hintDisplay.textContent = text;
+                } else {
+                    hintDisplay.textContent = 'ヒントの生成に失敗しました。';
+                }
+            } catch (error) {
+                console.error('Error fetching hint from Gemini API:', error);
+                hintDisplay.textContent = 'ヒントの取得中にエラーが発生しました。';
+            } finally {
+                hintDisplay.classList.remove('loading');
+            }
+        }
+
+        // --- Gemini API Integration for Game Summary ---
+        async function getGameSummary(outcome, stage, enemiesDefeated, playerLevel, skills) {
+            const displayElement = outcome === 'clear' ? gameClearSummaryDisplay : gameOverSummaryDisplay;
+            displayElement.textContent = ''; // Clear previous summary
+            displayElement.classList.add('loading'); // Show loading indicator
+            displayElement.textContent = '分析中...'; // Initial loading text
+
+            const skillList = Object.keys(skills)
+                .filter(key => {
+                    const skill = skills[key];
+                    if (typeof skill === 'number') return skill > 0;
+                    if (typeof skill === 'boolean') return skill;
+                    if (typeof skill === 'object' && skill !== null && 'active' in skill) return skill.active;
+                    return false;
+                })
+                .map(key => {
+                    const skillNameMap = {
+                        healthUp: '体力アップ',
+                        playerSpeedUp: '移動スピードアップ',
+                        bulletSpeedUp: '弾速アップ',
+                        doubleProjectile: '弾2倍',
+                        aura: 'オーラ',
+                        homingProjectile: 'ホーミング弾',
+                        projectileDamageUp: '弾ダメージアップ',
+                        punch: 'パンチ'
+                    };
+                    return skillNameMap[key] || key;
+                })
+                .join('、');
+
+            const prompt = `あなたはローグライクアクションゲームのゲームマスターです。プレイヤーのゲーム結果を分析し、簡潔な要約とコメントを提供してください。
+            ゲーム結果: ${outcome === 'clear' ? 'ゲームクリア' : 'ゲームオーバー'}
+            到達ステージ: ${stage}
+            倒した敵の総数: ${enemiesDefeated}体
+            プレイヤーレベル: ${playerLevel}
+            取得スキル: ${skillList.length > 0 ? skillList : 'なし'}
+
+            この情報に基づいて、プレイヤーのパフォーマンスを評価し、次に役立つような、少しユーモラスで励まし、または洞察に満ちたコメントを日本語で提供してください。`;
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = ""; // Canvas will inject this
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    displayElement.textContent = text;
+                } else {
+                    displayElement.textContent = '結果の分析に失敗しました。';
+                }
+            } catch (error) {
+                console.error('Error fetching game summary from Gemini API:', error);
+                displayElement.textContent = '分析の取得中にエラーが発生しました。';
+            } finally {
+                displayElement.classList.remove('loading');
+            }
+        }
+
+
+        // --- Event Listeners ---
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'a' || e.key === 'A') keys.a = true;
+            if (e.key === 'd' || e.key === 'D') keys.d = true;
+            if (e.key === ' ') keys.space = true;
+            if (e.key === 'Shift') keys.shift = true;
+            if (e.key === 'l' || e.key === 'L') keys.l = true;
+            if (e.key === 'k' || e.key === 'K') keys.k = true; // For punch skill
+
+            if (e.key === 'Enter') {
+                if (gameRunning && !selectingSkills) {
+                    paused = !paused;
+                    if (paused) {
+                        showModal(pauseModal);
+                    } else {
+                        hideModals();
+                        gameLoop(0); // Resume game loop with new timestamp
                     }
                 }
             }
         });
-    });
-</script>
 
-```
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'a' || e.key === 'A') keys.a = false;
+            if (e.key === 'd' || e.key === 'D') keys.d = false;
+            if (e.key === ' ') keys.space = false;
+            if (e.key === 'Shift') keys.shift = false;
+            if (e.key === 'l' || e.key === 'L') keys.l = false;
+            if (e.key === 'k' || e.key === 'K') keys.k = false;
+        });
 
-&lt;/body&gt;
-&lt;/html&gt;
-```
+        startGameButton.addEventListener('click', startGame);
+        restartGameButton.addEventListener('click', restartGame);
+        resumeButton.addEventListener('click', () => {
+            paused = false;
+            hideModals();
+            gameLoop(0); // Resume game loop with new timestamp
+        });
+        gameOverRestartButton.addEventListener('click', restartGame);
+        gameClearRestartButton.addEventListener('click', restartGame);
 
-\</immersive\>
+        // New: Event listener for the hint button
+        hintButton.addEventListener('click', () => {
+            // Get current enemy types for the hint
+            const currentEnemyTypes = [...new Set(enemies.map(enemy => enemy.type))];
+            getEnemyWeaknessHint(currentStage, currentEnemyTypes);
+        });
+
+        // Initialize Tone.js and the game when the window loads
+        window.onload = function() {
+            setupAudio(); // Setup audio synths
+            initGame();
+        };
+
+        // Setup Tone.js audio synths
+        function setupAudio() {
+            // Player shoot sound
+            playerShootSynth = new Tone.Synth({
+                oscillator: { type: "square" },
+                envelope: { attack: 0.001, decay: 0.1, sustain: 0.01, release: 0.1 }
+            }).toDestination();
+
+            // Player jump sound
+            playerJumpSynth = new Tone.Synth({
+                oscillator: { type: "triangle" },
+                envelope: { attack: 0.01, decay: 0.1, sustain: 0.01, release: 0.1 }
+            }).toDestination();
+
+            // Enemy hit sound
+            enemyHitSynth = new Tone.MembraneSynth().toDestination();
+
+            // Player damage sound
+            playerDamageSynth = new Tone.Synth({
+                oscillator: { type: "sawtooth" },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.05, release: 0.3 }
+            }).toDestination();
+
+            // Game Over sound
+            gameOverSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "triangle" },
+                envelope: { attack: 0.1, decay: 0.5, sustain: 0.2, release: 1 }
+            }).toDestination();
+
+            // Game Clear sound
+            gameClearSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.05, decay: 0.3, sustain: 0.1, release: 0.5 }
+            }).toDestination();
+
+            // Skill acquire sound
+            skillAcquireSynth = new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.01, decay: 0.05, sustain: 0.01, release: 0.1 }
+            }).toDestination();
+
+            // Start Tone.js context on first user interaction
+            document.documentElement.addEventListener('mousedown', () => {
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                    console.log("Audio context started.");
+                }
+            }, { once: true });
+        }
+
+        // Handle canvas resizing (optional, but good practice if canvas size can change)
+        window.addEventListener('resize', () => {
+            // If you want the canvas drawing resolution to match its display size:
+            // canvas.width = canvas.offsetWidth;
+            // canvas.height = canvas.offsetHeight;
+            // Then redraw all elements. For this game, CSS scaling is generally sufficient.
+            // If you implement this, you'll need to adjust player/enemy positions relative to new canvas size.
+        });
+
+    </script>
+</body>
+</html>
